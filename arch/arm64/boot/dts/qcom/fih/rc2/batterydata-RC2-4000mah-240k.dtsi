@@ -3,18 +3,18 @@ qcom,3413486_fih_cheryl2_3900mah_averaged_masterslave_may15th2018 {
 	/* #3413486_FIH_Cheryl2_3900mAh_averaged_MasterSlave_May15th2018*/
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <4000>;
-	qcom,fastchg-current-ma = <3900>;
+	qcom,fastchg-current-ma = <2400>;
 	qcom,batt-id-kohm = <240>;
 	qcom,battery-beta = <4085>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,battery-type = "3413486_fih_cheryl2_3900mah_averaged_masterslave_may15th2018";
 	qcom,soc-based-step-chg;
-	qcom,step-chg-ranges = <0	50	3900000
+	qcom,step-chg-ranges = <0	50	2400000
 				51	100	1900000>;
 	fih,step-chg-hysteresis = <0>;
 	qcom,jeita-fcc-ranges = <0	109	750000
 				 110	209	1150000
-				 210	459	3900000
+				 210	459	2400000
 				 460	549	1900000>;
 	qcom,jeita-fv-ranges = <0	459	4400000
 				460	550	4200000>;
