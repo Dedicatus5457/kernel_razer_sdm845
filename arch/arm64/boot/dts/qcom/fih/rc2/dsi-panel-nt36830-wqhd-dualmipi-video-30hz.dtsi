@@ -37,6 +37,7 @@
 		qcom,mdss-dsi-wr-mem-start = <0x2c>;
 		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
 		qcom,mdss-dsi-lp11-init;
+		qcom,panel-allow-phy-poweroff;
 		qcom,ulps-enabled;
 		qcom,dcs-cmd-by-left;
 
