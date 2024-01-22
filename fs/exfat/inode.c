@@ -90,8 +90,8 @@ int __exfat_write_inode(struct inode *inode, int sync)
 	if (ei->start_clu == EXFAT_EOF_CLUSTER)
 		on_disk_size = 0;
 
-	ep2->dentry.stream.valid_size = cpu_to_le64(on_disk_size);
-	ep2->dentry.stream.size = ep2->dentry.stream.valid_size;
+	ep2->dentry.stream.valid_size = cpu_to_le64(ei->valid_size);
+	ep2->dentry.stream.size = cpu_to_le64(on_disk_size);
 	if (on_disk_size) {
 		ep2->dentry.stream.flags = ei->flags;
 		ep2->dentry.stream.start_clu = cpu_to_le32(ei->start_clu);
@@ -339,11 +339,69 @@ static int exfat_get_block(struct inode *inode, sector_t iblock,
 					pos, ei->i_size_aligned);
 			goto unlock_ret;
 		}
-	}
+	} else {
+		valid_blks = EXFAT_B_TO_BLK(ei->valid_size, sb);
 
-	if (buffer_delay(bh_result))
-		clear_buffer_delay(bh_result);
-	map_bh(bh_result, sb, phys);
+		if (iblock + max_blocks < valid_blks) {
+			/* The range has been written, map it */
+			goto done;
+		} else if (iblock < valid_blks) {
+			/*
+			 * The area has been partially written,
+			 * map the written part.
+			 */
+			max_blocks = valid_blks - iblock;
+			goto done;
+		} else if (iblock == valid_blks &&
+			   (ei->valid_size & (sb->s_blocksize - 1))) {
+			/*
+			 * The block has been partially written,
+			 * zero the unwritten part and map the block.
+			 */
+			loff_t size, off;
+
+			max_blocks = 1;
+
+			/*
+			 * For direct read, the unwritten part will be zeroed in
+			 * exfat_direct_IO()
+			 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+			if (!bh_result->b_folio)
+				goto done;
+#else
+			if (!bh_result->b_page)
+				goto done;
+#endif
+
+			pos -= sb->s_blocksize;
+			size = ei->valid_size - pos;
+			off = pos & (PAGE_SIZE - 1);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+			folio_set_bh(bh_result, bh_result->b_folio, off);
+#else
+			set_bh_page(bh_result, bh_result->b_page, off);
+#endif
+			err = exfat_bh_read(bh_result);
+			if (err < 0)
+				goto unlock_ret;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
+			folio_zero_segment(bh_result->b_folio, off + size,
+					off + sb->s_blocksize);
+#else
+			zero_user_segment(bh_result->b_page, off + size,
+					off + sb->s_blocksize);
+#endif
+		} else {
+			/*
+			 * The range has not been written, clear the mapped flag
+			 * to only zero the cache and do not read from disk.
+			 */
+			clear_buffer_mapped(bh_result);
+		}
+	}
 done:
 	bh_result->b_size = EXFAT_BLK_TO_B(max_blocks, sb);
 unlock_ret:
